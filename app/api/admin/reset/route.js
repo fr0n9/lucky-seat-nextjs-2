@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-../../../../lib/...
+import { supabaseAdmin } from '../../../../lib/supabase';
+import { isAdmin } from '../../../../lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -25,22 +26,18 @@ export async function POST(request) {
   try {
     const sb = supabaseAdmin();
 
-    // Удаляем старый раунд
     const { error: deleteError } = await sb
       .from('cells')
       .delete()
       .gte('position', 1);
 
     if (deleteError) {
-      console.error('RESET DELETE ERROR:', deleteError);
-
       return NextResponse.json(
         { error: `Ошибка очистки: ${deleteError.message}` },
         { status: 500 }
       );
     }
 
-    // Перемешиваем числа 1–30
     const numbers = shuffle(
       Array.from({ length: 30 }, (_, i) => i + 1)
     );
@@ -52,14 +49,11 @@ export async function POST(request) {
       claimed_at: null
     }));
 
-    // Создаём новый раунд
     const { error: insertError } = await sb
       .from('cells')
       .insert(cells);
 
     if (insertError) {
-      console.error('RESET INSERT ERROR:', insertError);
-
       return NextResponse.json(
         { error: `Ошибка создания раунда: ${insertError.message}` },
         { status: 500 }
@@ -69,8 +63,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true });
 
   } catch (error) {
-    console.error('RESET SERVER ERROR:', error);
-
     return NextResponse.json(
       {
         error: `Server error: ${error?.message || String(error)}`

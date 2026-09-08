@@ -20,16 +20,7 @@ export async function POST(request) {
     if (error) {
       console.error('RESET ROUND SUPABASE ERROR:', error);
 
-      return NextResponse.json(
-        {
-          error: 'Supabase reset error',
-          details: error.message,
-          code: error.code,
-          hint: error.hint,
-          details2: error.details
-        },
-        { status: 500 }
-      );
+      throw error;
     }
 
     return NextResponse.json({

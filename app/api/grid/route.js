@@ -7,56 +7,66 @@ export const runtime = 'nodejs';
 export async function GET(request) {
   try {
     const sb = supabaseAdmin();
-    const user = readUserToken(request);
+    const userId = readUserToken(request);
 
-    const { data: cells, error } = await sb
+    const { data: cells, error: cellsError } = await sb
       .from('cells')
       .select('position, claimed_by, hidden_number')
       .order('position', { ascending: true });
 
-    if (error) {
-      console.error('GRID ERROR:', error);
+    if (cellsError) {
+      console.error('GRID CELLS ERROR:', cellsError);
 
       return NextResponse.json(
-        { error: error.message || 'Ошибка загрузки ячеек' },
+        { error: cellsError.message },
         { status: 500 }
       );
     }
 
-    let myPosition = null;
-    let myNumber = null;
+    const publicCells = (cells || []).map(cell => ({
+      position: cell.position,
+      claimed: Boolean(cell.claimed_by)
+    }));
 
-    if (user?.id) {
-      const myCell = cells?.find(cell => cell.claimed_by === user.id);
+    let me = null;
 
-      if (myCell) {
-        myPosition = myCell.position;
-        myNumber = myCell.hidden_number;
+    if (userId) {
+      const { data: user, error: userError } = await sb
+        .from('users')
+        .select('id, username')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (userError) {
+        console.error('GRID USER ERROR:', userError);
+      }
+
+      if (user) {
+        const myCell = (cells || []).find(
+          cell => cell.claimed_by === userId
+        );
+
+        me = {
+          id: user.id,
+          username: user.username,
+          claimedPosition: myCell?.position || null,
+          number: myCell?.hidden_number || null
+        };
       }
     }
 
-    const publicCells = (cells || []).map(cell => ({
-      position: cell.position,
-      claimed: Boolean(cell.claimed_by),
-      mine: user?.id ? cell.claimed_by === user.id : false,
-      hidden_number:
-        user?.id && cell.claimed_by === user.id
-          ? cell.hidden_number
-          : null
-    }));
-
     return NextResponse.json({
       cells: publicCells,
-      loggedIn: Boolean(user?.id),
-      myPosition,
-      myNumber
+      me
     });
 
   } catch (error) {
     console.error('GRID SERVER ERROR:', error);
 
     return NextResponse.json(
-      { error: error?.message || 'Server error' },
+      {
+        error: error?.message || 'Server error'
+      },
       { status: 500 }
     );
   }

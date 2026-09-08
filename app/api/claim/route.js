@@ -1,12 +1,67 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { readUserToken } from '../../../lib/auth';
-export const runtime='nodejs';
-export async function POST(request){
-  try{const userId=readUserToken(request); if(!userId)return NextResponse.json({error:'Сначала войдите в аккаунт'},{status:401});
-    const {position}=await request.json(); const p=Number(position); if(!Number.isInteger(p)||p<1||p>30)return NextResponse.json({error:'Некорректная ячейка'},{status:400});
-    const sb=supabaseAdmin(); const {data,error}=await sb.rpc('claim_cell',{p_user:userId,p_position:p}); if(error)throw error;
-    const row=Array.isArray(data)?data[0]:data; if(!row?.success)return NextResponse.json({error:row?.message||'Ячейка уже занята'},{status:409});
-    return NextResponse.json({ok:true,number:row.hidden_number});
-  }catch(e){return NextResponse.json({error:'Не удалось сделать выбор'},{status:500})}
+
+export const runtime = 'nodejs';
+
+export async function POST(request) {
+  try {
+    const user = readUserToken(request);
+
+    if (!user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const position = Number(body.position);
+
+    if (!Number.isInteger(position) || position < 1 || position > 30) {
+      return NextResponse.json(
+        { error: 'Некорректная ячейка' },
+        { status: 400 }
+      );
+    }
+
+    const sb = supabaseAdmin();
+
+    const { data, error } = await sb.rpc('claim_cell', {
+      p_user: user.id,
+      p_position: position
+    });
+
+    if (error) {
+      console.error('CLAIM ERROR:', error);
+
+      return NextResponse.json(
+        { error: error.message || 'Ошибка выбора ячейки' },
+        { status: 500 }
+      );
+    }
+
+    const result = Array.isArray(data) ? data[0] : data;
+
+    if (!result?.success) {
+      return NextResponse.json(
+        { error: result?.message || 'Не удалось выбрать ячейку' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      position,
+      hidden_number: result.hidden_number
+    });
+
+  } catch (error) {
+    console.error('CLAIM SERVER ERROR:', error);
+
+    return NextResponse.json(
+      { error: error?.message || 'Server error' },
+      { status: 500 }
+    );
+  }
 }

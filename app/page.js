@@ -51,7 +51,6 @@ export default function Home() {
         </form>
       </div> : <div className="userbar"><span>Ты вошёл как <b>{me.username}</b></span><button onClick={logout}>Выйти</button></div>}
 
-      <div className="screen">ЭКРАН</div>
       {loading ? <p>Загрузка…</p> : <div className="grid">
         {grid.map(c => {
           const mine = me && me.claimedPosition === c.position;

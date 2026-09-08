@@ -1,0 +1,3 @@
+import crypto from 'crypto'; import { NextResponse } from 'next/server'; import { createAdminToken,adminCookie } from '../../../../lib/auth';
+export const runtime='nodejs';
+export async function POST(request){const {password}=await request.json();const expected=String(process.env.ADMIN_PASSWORD||'');const got=String(password||'');const a=Buffer.from(got),b=Buffer.from(expected);if(!expected||a.length!==b.length||!crypto.timingSafeEqual(a,b))return NextResponse.json({error:'Неверный пароль'},{status:401});const r=NextResponse.json({ok:true});r.headers.set('Set-Cookie',adminCookie(createAdminToken()));return r}
